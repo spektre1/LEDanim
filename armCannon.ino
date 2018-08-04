@@ -15,6 +15,14 @@ uint8_t getB(uint32_t color) { return (uint8_t)color; }
 uint8_t lerpChannel(uint8_t value1, uint8_t value2, float factor) {
     return value1 + (factor * (value2 - value1));
 }
+uint32_t lerpColor(
+    uint32_t color1, uint32_t color2, float factor) {
+    return strip.Color(
+        lerpChannel(getR(color1), getR(color2), factor),
+        lerpChannel(getG(color1), getG(color2), factor),
+        lerpChannel(getB(color1), getB(color2), factor)
+    );
+}
 
 void setup() {
     strip.begin();
@@ -24,6 +32,7 @@ void setup() {
 
 
 class LEDSet {
+    private:
     unsigned long previousMillis;
     uint8_t cycler = 0; // 0-255 incremented each update, useful for cyclers.
     long interval = 10; // in milliseconds
@@ -130,23 +139,27 @@ class LEDSet {
 
 
 class ArmCannon {
+    private:
     LEDSet ledSet1;
     LEDSet ledSet2;
     LEDSet ledSet3;
     LEDSet ledSet4;
     LEDSet ledSet5;
-    const byte ANIM_DEFAULT = 0; // Normal Beam
-    const byte ANIM_ICE     = 1; // IceBeam
-    const byte ANIM_PLAZMA  = 2;
+    static const byte ANIM_DEFAULT = 0; // Normal Beam
+    static const byte ANIM_ICE     = 1; // IceBeam
+    static const byte ANIM_PLAZMA  = 2;
+    static const byte ANIM_PL  = 3;
     byte state = ANIM_PLAZMA;
+    byte lastState = 0;
+    byte incrementor = 0;
 
     // Default colors are set to the starter beam
-    uint32_t boreColor1   = strip.Color(56, 48, 0);
-    uint32_t boreColor2   = strip.Color(72, 8, 0);
-    uint32_t radialColor1 = strip.Color(56, 48, 0);
-    uint32_t radialColor2 = strip.Color(72, 8, 0);
+    uint32_t Color1   = strip.Color(56, 48, 0);
+    uint32_t Color2   = strip.Color(72, 8, 0);
     uint32_t muzzleColor  = strip.Color(16, 8, 2);
-
+    uint32_t lastColor1;
+    uint32_t lastColor2;
+    uint32_t lastmuzzleColor;
 
     public: ArmCannon () {
         ledSet1.init( 0, 11);
@@ -154,39 +167,46 @@ class ArmCannon {
         ledSet3.init(24, 39);
         ledSet4.init(40, 55, true);
         ledSet5.init(56, 64);
+        // ? Do I need to init them like this?
+        ledSet1.setColor(Color1, Color2);
+        ledSet2.setColor(Color1, Color2);
+        ledSet3.setColor(Color1, Color2);
+        ledSet4.setColor(Color1, Color2);
+        ledSet5.setColor(muzzleColor, muzzleColor);
     }
 
     void Update() {
+        // This next line makes it change state every so often for a DEMO mode
+        // if (incrementor == 255) {
+        //     if (state > 2) { state = 0; } else { state++; }
+        // }
+
+
         if (state == ANIM_DEFAULT) {
-            boreColor1   = strip.Color(56, 48, 0);
-            boreColor2   = strip.Color(72, 8, 0);
-            radialColor1 = strip.Color(56, 48, 0);
-            radialColor2 = strip.Color(72, 8, 0);
+            Color1   = strip.Color(56, 48, 0);
+            Color2   = strip.Color(72, 8, 0);
             muzzleColor  = strip.Color(16, 8, 2);
         } else if (state == ANIM_ICE) { 
-            boreColor1   = strip.Color(0, 0, 72);
-            boreColor2   = strip.Color(32, 32, 32);
-            radialColor1 = strip.Color(0, 0, 72);
-            radialColor2 = strip.Color(32, 32, 32);
+            Color1   = strip.Color(8, 8, 64);
+            Color2   = strip.Color(32, 32, 32);
             muzzleColor  = strip.Color(2, 8, 16);
         } else if (state == ANIM_PLAZMA) { 
-            boreColor1   = strip.Color(0, 72, 0);
-            boreColor2   = strip.Color(24, 32, 24);
-            radialColor1 = strip.Color(0, 72, 0);
-            radialColor2 = strip.Color(16, 48, 16);
+            Color1   = strip.Color(0, 72, 0);
+            Color2   = strip.Color(24, 32, 24);
             muzzleColor  = strip.Color(2, 16, 8);
         }
-        ledSet1.setColor(boreColor1, boreColor2);
-        ledSet2.setColor(boreColor1, boreColor2);
-        ledSet3.setColor(radialColor1, radialColor2);
-        ledSet4.setColor(radialColor1, radialColor2);
-        ledSet5.setColor(boreColor1, boreColor2);
+        ledSet1.setColor(Color1, Color2);
+        ledSet2.setColor(Color1, Color2);
+        ledSet3.setColor(Color1, Color2);
+        ledSet4.setColor(Color1, Color2);
+        ledSet5.setColor(muzzleColor, muzzleColor);
 
         ledSet1.Update();
         ledSet2.Update();
         ledSet3.Update();
         ledSet4.Update();
         ledSet5.Update();
+        incrementor++;
     }
 };
 
