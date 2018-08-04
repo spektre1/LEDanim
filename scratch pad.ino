@@ -24,3 +24,19 @@ void colorFill(uint32_t color, uint8_t i, uint8_t x) {
     }
 }
 
+
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+    WheelPos = 255 - WheelPos;
+    byte w3 = WheelPos * 3;
+    if(WheelPos < 85) {
+        return strip.Color(255 - w3, 0, w3);
+    }
+    if(WheelPos < 170) {
+        WheelPos -= 85;
+        return strip.Color(0, w3, 255 - w3);
+    }
+    WheelPos -= 170;
+    return strip.Color(w3, 255 - w3, 0);
+}

@@ -16,22 +16,6 @@ uint8_t lerpChannel(uint8_t value1, uint8_t value2, float factor) {
     return value1 + (factor * (value2 - value1));
 }
 
-// Input a value 0 to 255 to get a color value.
-// The colours are a transition r - g - b - back to r.
-uint32_t Wheel(byte WheelPos) {
-    WheelPos = 255 - WheelPos;
-    byte w3 = WheelPos * 3;
-    if(WheelPos < 85) {
-        return strip.Color(255 - w3, 0, w3);
-    }
-    if(WheelPos < 170) {
-        WheelPos -= 85;
-        return strip.Color(0, w3, 255 - w3);
-    }
-    WheelPos -= 170;
-    return strip.Color(w3, 255 - w3, 0);
-}
-
 void setup() {
     strip.begin();
     strip.show(); // Initialize all pixels to 'off'
@@ -119,13 +103,16 @@ class LEDSet {
             b + (b * value));
     }
 
-    void set (int pos1, int pos2, uint32_t c1, uint32_t c2, bool r = false) {
+    void init (int pos1, int pos2, bool r = false) {
         x1 = pos1; // First index in LED strip
         x2 = pos2; // Second index
         previousMillis = 0;
+        reverse = r;
+    }
+
+    void setColor(uint32_t c1, uint32_t c2) {
         color1 = c1;
         color2 = c2;
-        reverse = r;
     }
 
     void Update() {
@@ -148,10 +135,10 @@ class ArmCannon {
     LEDSet ledSet3;
     LEDSet ledSet4;
     LEDSet ledSet5;
-    byte state = ANIM_DEFAULT;
     const byte ANIM_DEFAULT = 0; // Normal Beam
     const byte ANIM_ICE     = 1; // IceBeam
-    const byte ANIM_SPAZER  = 2;
+    const byte ANIM_PLAZMA  = 2;
+    byte state = ANIM_PLAZMA;
 
     // Default colors are set to the starter beam
     uint32_t boreColor1   = strip.Color(56, 48, 0);
@@ -162,11 +149,11 @@ class ArmCannon {
 
 
     public: ArmCannon () {
-        ledSet1.set(0, 11,  boreColor1, boreColor2);
-        ledSet2.set(12, 23, boreColor1, boreColor2, true);
-        ledSet3.set(24, 39, radialColor1, radialColor2);
-        ledSet4.set(40, 55, radialColor1, radialColor2, true);
-        ledSet5.set(56, 64, muzzleColor, muzzleColor);
+        ledSet1.init( 0, 11);
+        ledSet2.init(12, 23, true);
+        ledSet3.init(24, 39);
+        ledSet4.init(40, 55, true);
+        ledSet5.init(56, 64);
     }
 
     void Update() {
@@ -176,14 +163,25 @@ class ArmCannon {
             radialColor1 = strip.Color(56, 48, 0);
             radialColor2 = strip.Color(72, 8, 0);
             muzzleColor  = strip.Color(16, 8, 2);
-        }
-        if (state == ANIM_ICE) { 
+        } else if (state == ANIM_ICE) { 
             boreColor1   = strip.Color(0, 0, 72);
             boreColor2   = strip.Color(32, 32, 32);
             radialColor1 = strip.Color(0, 0, 72);
             radialColor2 = strip.Color(32, 32, 32);
             muzzleColor  = strip.Color(2, 8, 16);
+        } else if (state == ANIM_PLAZMA) { 
+            boreColor1   = strip.Color(0, 72, 0);
+            boreColor2   = strip.Color(24, 32, 24);
+            radialColor1 = strip.Color(0, 72, 0);
+            radialColor2 = strip.Color(16, 48, 16);
+            muzzleColor  = strip.Color(2, 16, 8);
         }
+        ledSet1.setColor(boreColor1, boreColor2);
+        ledSet2.setColor(boreColor1, boreColor2);
+        ledSet3.setColor(radialColor1, radialColor2);
+        ledSet4.setColor(radialColor1, radialColor2);
+        ledSet5.setColor(boreColor1, boreColor2);
+
         ledSet1.Update();
         ledSet2.Update();
         ledSet3.Update();
