@@ -145,21 +145,29 @@ class ArmCannon {
     LEDSet ledSet3;
     LEDSet ledSet4;
     LEDSet ledSet5;
+
     static const byte ANIM_DEFAULT = 0; // Normal Beam
     static const byte ANIM_ICE     = 1; // IceBeam
     static const byte ANIM_PLAZMA  = 2;
-    static const byte ANIM_PL  = 3;
-    byte state = ANIM_PLAZMA;
+    static const byte ANIM_WHITE   = 3;
+
+    byte state = ANIM_DEFAULT;
     byte lastState = 0;
-    byte incrementor = 0;
+    byte changeDuration = 127; // Max 255
+
+    byte incrementor = 0; // Used for state changes
+    int timer = 0; // Global timer
 
     // Default colors are set to the starter beam
-    uint32_t Color1   = strip.Color(56, 48, 0);
-    uint32_t Color2   = strip.Color(72, 8, 0);
-    uint32_t muzzleColor  = strip.Color(16, 8, 2);
+    uint32_t Color1 = strip.Color(56, 48, 0);
+    uint32_t Color2 = strip.Color(72, 8, 0);
+    uint32_t Color3 = strip.Color(16, 8, 2);
     uint32_t lastColor1;
     uint32_t lastColor2;
-    uint32_t lastmuzzleColor;
+    uint32_t lastColor3;
+    uint32_t newColor1;
+    uint32_t newColor2;
+    uint32_t newColor3;
 
     public: ArmCannon () {
         ledSet1.init( 0, 11);
@@ -172,34 +180,53 @@ class ArmCannon {
         ledSet2.setColor(Color1, Color2);
         ledSet3.setColor(Color1, Color2);
         ledSet4.setColor(Color1, Color2);
-        ledSet5.setColor(muzzleColor, muzzleColor);
+        ledSet5.setColor(Color3, Color3);
     }
 
-    void Update() {
-        // This next line makes it change state every so often for a DEMO mode
-        // if (incrementor == 255) {
-        //     if (state > 2) { state = 0; } else { state++; }
-        // }
-
-
+    void changeState(byte newState) {
+        incrementor = 0;
+        lastState = state;
+        state = newState;
+        lastColor1 = Color1;
+        lastColor2 = Color2;
+        lastColor3 = Color3;
         if (state == ANIM_DEFAULT) {
-            Color1   = strip.Color(56, 48, 0);
-            Color2   = strip.Color(72, 8, 0);
-            muzzleColor  = strip.Color(16, 8, 2);
+            newColor1 = strip.Color(56, 48, 0);
+            newColor2 = strip.Color(72, 8, 0);
+            newColor3 = strip.Color(16, 8, 2);
         } else if (state == ANIM_ICE) { 
-            Color1   = strip.Color(8, 8, 64);
-            Color2   = strip.Color(32, 32, 32);
-            muzzleColor  = strip.Color(2, 8, 16);
+            newColor1 = strip.Color(8, 8, 64);
+            newColor2 = strip.Color(32, 32, 32);
+            newColor3 = strip.Color(2, 8, 16);
         } else if (state == ANIM_PLAZMA) { 
-            Color1   = strip.Color(0, 72, 0);
-            Color2   = strip.Color(24, 32, 24);
-            muzzleColor  = strip.Color(2, 16, 8);
+            newColor1 = strip.Color(0, 72, 0);
+            newColor2 = strip.Color(24, 32, 24);
+            newColor3 = strip.Color(2, 16, 8);
+        } else if ( state == ANIM_WHITE) {
+            newColor1 = strip.Color(64, 64, 64);
+            newColor2 = strip.Color(64, 64, 64);
+            newColor3 = strip.Color(64, 64, 64);
+        } 
+    }
+
+
+    void Update() {
+
+        if (timer%512 == 0) { changeState(ANIM_ICE);}
+        if (timer%1024 == 0) { changeState(ANIM_PLAZMA);}
+
+        if (lastState != 0) {
+            //We're in a state change
+            if (incrementor == changeDuration) {lastState = 0;}
+            Color1 = lerpColor(newColor1, lastColor1, (float)incrementor/changeDuration);
+            Color2 = lerpColor(newColor2, lastColor2, (float)incrementor/changeDuration);
+            Color3 = lerpColor(newColor2, lastColor2, (float)incrementor/changeDuration);
+            ledSet1.setColor(Color1, Color2);
+            ledSet2.setColor(Color1, Color2);
+            ledSet3.setColor(Color1, Color2);
+            ledSet4.setColor(Color1, Color2);
+            ledSet5.setColor(Color3, Color3);
         }
-        ledSet1.setColor(Color1, Color2);
-        ledSet2.setColor(Color1, Color2);
-        ledSet3.setColor(Color1, Color2);
-        ledSet4.setColor(Color1, Color2);
-        ledSet5.setColor(muzzleColor, muzzleColor);
 
         ledSet1.Update();
         ledSet2.Update();
@@ -207,6 +234,7 @@ class ArmCannon {
         ledSet4.Update();
         ledSet5.Update();
         incrementor++;
+        timer++;
     }
 };
 
