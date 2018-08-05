@@ -63,7 +63,6 @@ class LEDSet {
         color2 = strip.Color(0, 64, 0);
     }
 
-
     uint32_t lerpColorMirror(uint32_t color1, uint32_t color2, float factor, bool reverse = false) {
         if (factor < 0.5) {
             factor = factor * 2;
@@ -152,7 +151,7 @@ class ArmCannon {
     static const byte ANIM_WHITE   = 3;
 
     byte state = ANIM_DEFAULT;
-    byte lastState = 0;
+    bool stateTrans = false;
     byte changeDuration = 127; // Max 255
 
     byte incrementor = 0; // Used for state changes
@@ -171,7 +170,7 @@ class ArmCannon {
 
     public: ArmCannon () {
         ledSet1.init( 0, 11);
-        ledSet2.init(12, 23, true);
+        ledSet2.init(12, 23, true); //true means "reverse" the LED order here
         ledSet3.init(24, 39);
         ledSet4.init(40, 55, true);
         ledSet5.init(56, 64);
@@ -184,8 +183,9 @@ class ArmCannon {
     }
 
     void changeState(byte newState) {
+        if (newState == state) {return;} // Do nothing if in this state already
         incrementor = 0;
-        lastState = state;
+        stateTrans = true;
         state = newState;
         lastColor1 = Color1;
         lastColor2 = Color2;
@@ -199,8 +199,8 @@ class ArmCannon {
             newColor2 = strip.Color(32, 32, 32);
             newColor3 = strip.Color(2, 8, 16);
         } else if (state == ANIM_PLAZMA) { 
-            newColor1 = strip.Color(0, 72, 0);
-            newColor2 = strip.Color(24, 32, 24);
+            newColor1 = strip.Color(0, 92, 0);
+            newColor2 = strip.Color(24, 40, 24);
             newColor3 = strip.Color(2, 16, 8);
         } else if ( state == ANIM_WHITE) {
             newColor1 = strip.Color(64, 64, 64);
@@ -212,15 +212,17 @@ class ArmCannon {
 
     void Update() {
 
-        if (timer%512 == 0) { changeState(ANIM_ICE);}
-        if (timer%1024 == 0) { changeState(ANIM_PLAZMA);}
+        //if (timer == 512) { changeState(ANIM_ICE);}
+        if (timer == 512) { changeState(ANIM_PLAZMA);}
+        if (timer == 1024) { changeState(ANIM_ICE);}
+        if (timer == 1500) { changeState(ANIM_DEFAULT); timer=0;}
 
-        if (lastState != 0) {
-            //We're in a state change
-            if (incrementor == changeDuration) {lastState = 0;}
-            Color1 = lerpColor(newColor1, lastColor1, (float)incrementor/changeDuration);
-            Color2 = lerpColor(newColor2, lastColor2, (float)incrementor/changeDuration);
-            Color3 = lerpColor(newColor2, lastColor2, (float)incrementor/changeDuration);
+
+        if (stateTrans == true) {
+            if (incrementor == changeDuration) {stateTrans = false;}
+            Color1 = lerpColor(lastColor1, newColor1, (float)incrementor/changeDuration);
+            Color2 = lerpColor(lastColor2, newColor2, (float)incrementor/changeDuration);
+            Color3 = lerpColor(lastColor2, newColor2, (float)incrementor/changeDuration);
             ledSet1.setColor(Color1, Color2);
             ledSet2.setColor(Color1, Color2);
             ledSet3.setColor(Color1, Color2);
