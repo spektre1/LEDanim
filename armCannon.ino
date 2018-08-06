@@ -1,12 +1,21 @@
 #include <Adafruit_NeoPixel.h>
+#include <EnableInterrupt.h>
 #ifdef __AVR__
   #include <avr/power.h>
 #endif
 
-// Create the strip object
-#define PIN 6
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(65, PIN, NEO_GRB + NEO_KHZ800);
 
+// Animation names
+static const byte ANIM_DEFAULT = 0; // Normal Beam
+static const byte ANIM_ICE     = 1; // IceBeam
+static const byte ANIM_PLAZMA  = 2;
+static const byte ANIM_WHITE   = 3;
+
+
+
+// Create the strip object
+#define PIXELPIN 6
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(65, PIXELPIN, NEO_GRB + NEO_KHZ800);
 
 // Utility Functions
 uint8_t getR(uint32_t color) { return (uint8_t)(color >> 16); }
@@ -27,9 +36,9 @@ uint32_t lerpColor(
 void setup() {
     strip.begin();
     strip.show(); // Initialize all pixels to 'off'
+    enableInterrupt(2, changeMode, CHANGE);
+    enableInterrupt(3, fire, CHANGE);
 }
-
-
 
 class LEDSet {
     private:
@@ -136,7 +145,6 @@ class LEDSet {
     }
 };
 
-
 class ArmCannon {
     private:
     LEDSet ledSet1;
@@ -145,10 +153,7 @@ class ArmCannon {
     LEDSet ledSet4;
     LEDSet ledSet5;
 
-    static const byte ANIM_DEFAULT = 0; // Normal Beam
-    static const byte ANIM_ICE     = 1; // IceBeam
-    static const byte ANIM_PLAZMA  = 2;
-    static const byte ANIM_WHITE   = 3;
+    static const byte ANIM_COUNT   = 4; // Need this to track mode switch
 
     byte state = ANIM_DEFAULT;
     bool stateTrans = false;
@@ -209,15 +214,22 @@ class ArmCannon {
         } 
     }
 
+    void fire() {
+
+    }
+
+    void nextState() {
+        if (state >= ANIM_COUNT) {
+            changeState(0);
+        } else {
+            changeState(state + 1);
+        }
+    }
 
     void Update() {
-
-        //if (timer == 512) { changeState(ANIM_ICE);}
-        if (timer == 512) { changeState(ANIM_PLAZMA);}
-        if (timer == 1024) { changeState(ANIM_ICE);}
-        if (timer == 1500) { changeState(ANIM_DEFAULT); timer=0;}
-
-
+        //if (timer == 512) { changeState(ANIM_PLAZMA);}
+        //if (timer == 1024) { changeState(ANIM_ICE);}
+        //if (timer == 1500) { changeState(ANIM_DEFAULT); timer=0;}
         if (stateTrans == true) {
             if (incrementor == changeDuration) {stateTrans = false;}
             Color1 = lerpColor(lastColor1, newColor1, (float)incrementor/changeDuration);
@@ -240,10 +252,18 @@ class ArmCannon {
     }
 };
 
-
 ArmCannon ac;
 
 void loop() {
     ac.Update();
     strip.show();
+}
+
+void changeMode() {
+    //ac.changeState(ANIM_ICE);
+    ac.nextState();
+}
+
+void fire() {
+    ac.fire();
 }
