@@ -11,9 +11,14 @@ static const byte ANIM_ICE     = 1; // IceBeam
 static const byte ANIM_PLAZMA  = 2;
 static const byte ANIM_WHITE   = 3;
 
+int timer = 0; // Global timer
+int button1State = 0;
+volatile unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
 
 
 // Create the strip object
+#define SWITCH1PIN 2
 #define PIXELPIN 6
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(65, PIXELPIN, NEO_GRB + NEO_KHZ800);
 
@@ -34,10 +39,13 @@ uint32_t lerpColor(
 }
 
 void setup() {
+    Serial.begin(9600);
+    //Serial.print("Freshly flashed! Running...");
     strip.begin();
     strip.show(); // Initialize all pixels to 'off'
-    enableInterrupt(2, changeMode, CHANGE);
-    enableInterrupt(3, fire, CHANGE);
+    pinMode(SWITCH1PIN, INPUT_PULLUP);
+    enableInterrupt(2, changeMode, LOW);
+    //enableInterrupt(3, fire, CHANGE);
 }
 
 class LEDSet {
@@ -155,17 +163,16 @@ class ArmCannon {
 
     static const byte ANIM_COUNT   = 4; // Need this to track mode switch
 
-    byte state = ANIM_DEFAULT;
+    volatile byte state = ANIM_DEFAULT;
     bool stateTrans = false;
-    byte changeDuration = 127; // Max 255
+    byte changeDuration = 64; // Max 255
 
     byte incrementor = 0; // Used for state changes
-    int timer = 0; // Global timer
 
     // Default colors are set to the starter beam
-    uint32_t Color1 = strip.Color(56, 48, 0);
-    uint32_t Color2 = strip.Color(72, 8, 0);
-    uint32_t Color3 = strip.Color(16, 8, 2);
+    uint32_t Color1 = strip.Color(10, 10, 10);
+    uint32_t Color2 = strip.Color(10, 10, 10);
+    uint32_t Color3 = strip.Color(10, 10, 10);
     uint32_t lastColor1;
     uint32_t lastColor2;
     uint32_t lastColor3;
@@ -186,6 +193,9 @@ class ArmCannon {
         ledSet4.setColor(Color1, Color2);
         ledSet5.setColor(Color3, Color3);
     }
+    byte getState(){
+        return state;
+    }
 
     void changeState(byte newState) {
         if (newState == state) {return;} // Do nothing if in this state already
@@ -196,7 +206,7 @@ class ArmCannon {
         lastColor2 = Color2;
         lastColor3 = Color3;
         if (state == ANIM_DEFAULT) {
-            newColor1 = strip.Color(56, 48, 0);
+            newColor1 = strip.Color(56, 40, 0);
             newColor2 = strip.Color(72, 8, 0);
             newColor3 = strip.Color(16, 8, 2);
         } else if (state == ANIM_ICE) { 
@@ -213,13 +223,15 @@ class ArmCannon {
             newColor3 = strip.Color(64, 64, 64);
         } 
     }
-
+    void setState(byte newState) {
+        state = newState;
+    }
     void fire() {
 
     }
 
     void nextState() {
-        if (state >= ANIM_COUNT) {
+        if (state >= (ANIM_COUNT - 1)) {
             changeState(0);
         } else {
             changeState(state + 1);
@@ -248,20 +260,35 @@ class ArmCannon {
         ledSet4.Update();
         ledSet5.Update();
         incrementor++;
-        timer++;
     }
 };
 
 ArmCannon ac;
 
 void loop() {
+
     ac.Update();
     strip.show();
+    timer++;
+    // This whole section is just debug.
+    /*
+    if (timer % 64 == 0) {
+        Serial.print("timer:");
+        Serial.print(timer);
+        Serial.print(" - state:");
+        Serial.println(ac.getState());
+    }
+    */
 }
 
 void changeMode() {
-    //ac.changeState(ANIM_ICE);
-    ac.nextState();
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+        //ac.changeState(ANIM_ICE);
+        ac.nextState();
+        Serial.print("SWITCH! State change: ");
+        Serial.println(ac.getState());
+        lastDebounceTime = millis();
+    }
 }
 
 void fire() {
