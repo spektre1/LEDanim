@@ -26,15 +26,15 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(65, PIXELPIN, NEO_GRB + NEO_KHZ800);
 uint8_t getR(uint32_t color) { return (uint8_t)(color >> 16); }
 uint8_t getG(uint32_t color) { return (uint8_t)(color >>  8); }
 uint8_t getB(uint32_t color) { return (uint8_t)color; }
-uint8_t lerpChannel(uint8_t value1, uint8_t value2, float factor) {
-    return value1 + (factor * (value2 - value1));
+uint8_t lerpChannel(uint8_t value1, uint8_t value2, float scalar) {
+    return value1 + (scalar * (value2 - value1));
 }
 uint32_t lerpColor(
-    uint32_t color1, uint32_t color2, float factor) {
+    uint32_t color1, uint32_t color2, float scalar) {
     return strip.Color(
-        lerpChannel(getR(color1), getR(color2), factor),
-        lerpChannel(getG(color1), getG(color2), factor),
-        lerpChannel(getB(color1), getB(color2), factor)
+        lerpChannel(getR(color1), getR(color2), scalar),
+        lerpChannel(getG(color1), getG(color2), scalar),
+        lerpChannel(getB(color1), getB(color2), scalar)
     );
 }
 
@@ -80,16 +80,16 @@ class LEDSet {
         color2 = strip.Color(0, 64, 0);
     }
 
-    uint32_t lerpColorMirror(uint32_t color1, uint32_t color2, float factor, bool reverse = false) {
-        if (factor < 0.5) {
-            factor = factor * 2;
+    uint32_t lerpColorMirror(uint32_t color1, uint32_t color2, float scalar, bool reverse = false) {
+        if (scalar < 0.5) {
+            scalar = scalar * 2;
         } else {
-            factor = 1 - ((factor - 0.5) * 2);
+            scalar = 1 - ((scalar - 0.5) * 2);
         }
         return strip.Color(
-            lerpChannel(getR(color1), getR(color2), factor),
-            lerpChannel(getG(color1), getG(color2), factor),
-            lerpChannel(getB(color1), getB(color2), factor)
+            lerpChannel(getR(color1), getR(color2), scalar),
+            lerpChannel(getG(color1), getG(color2), scalar),
+            lerpChannel(getB(color1), getB(color2), scalar)
         );
     }
 
@@ -105,20 +105,20 @@ class LEDSet {
             color2 = tColor;
         }
         for (uint8_t i = 0; i <= (n2 - n1); i++) {
-            float factor = (float)i / (n2 - n1);
-            // Now we cycle the factor...
-            factor = modf(factor + ((float)cycle / 256), nullptr);
+            float scalar = (float)i / (n2 - n1);
+            // Now we cycle the scalar...
+            scalar = modf(scalar + ((float)cycle / 256), nullptr);
             strip.setPixelColor( 
                 n1 + i,
-                lerpColorMirror(color1, color2, factor, reverse) );
+                lerpColorMirror(color1, color2, scalar, reverse) );
         }
     }
 
-    // Input color, a sine vector, and a multiplier factor to modulate the
+    // Input color, a sine vector, and a multiplier scalar to modulate the
     // brightness. Returns a color. Vector in this should be an incrementor
-    // to maintain a clean animation. Factor should be 0-1.
-    uint32_t sineModBright(uint32_t color, byte vector, float factor ) {
-        float value = ((strip.sine8(vector) * factor) / 255) - (0.5 * factor);
+    // to maintain a clean animation. scalar should be 0-1.
+    uint32_t sineModBright(uint32_t color, byte vector, float scalar ) {
+        float value = ((strip.sine8(vector) * scalar) / 255) - (0.5 * scalar);
         int8_t r = getR(color);
         int8_t g = getG(color);
         int8_t b = getB(color);
