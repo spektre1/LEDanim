@@ -1,0 +1,7 @@
+== Serial Debugging ==
+
+stty -F /dev/ttyACM0 cs8 9600 ignbrk -brkint -icrnl -imaxbel -opost -onlcr -isig -icanon -iexten -echo -echoe -echok -echoctl -echoke noflsh -ixon -crtscts
+tail -f /dev/ttyACM0
+
+
+P8Qu41kFdrz4F!1b
