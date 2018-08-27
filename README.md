@@ -11,3 +11,9 @@ of this code. I expect to generalize what I learn while developing this into a
 general purpose animation API so I can use this easily for other projects.
 
 Follow armCannon.ino if you want to see my current progress.
+
+
+# Who
+Danielle MacDonald
+* [Facebook](https://www.facebook.com/spektre1)
+* [Twitter](https://twitter.com/DaniPonders)
