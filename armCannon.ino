@@ -11,13 +11,11 @@ static const byte ANIM_ICE     = 1; // IceBeam
 static const byte ANIM_PLAZMA  = 2;
 static const byte ANIM_WHITE   = 3;
 
-
-
 int timer = 0; // Global timer
 int button1State = 0;
 volatile unsigned long lastDebounceTime = 0;
+volatile unsigned long lastDebounceTime2 = 0;
 unsigned long debounceDelay = 50;
-
 
 // Create the strip object
 #define SWITCH1PIN 2
@@ -25,15 +23,33 @@ unsigned long debounceDelay = 50;
 #define PIXELPIN 6
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(65, PIXELPIN, NEO_GRB + NEO_KHZ800);
 
+// Color Constants
+static const uint32_t cWhite = strip.Color(255,255,255);
+
 // Utility Functions
 uint8_t getR(uint32_t color) { return (uint8_t)(color >> 16); }
 uint8_t getG(uint32_t color) { return (uint8_t)(color >>  8); }
 uint8_t getB(uint32_t color) { return (uint8_t)color; }
+
 uint8_t lerpChannel(uint8_t value1, uint8_t value2, float scalar) {
     return value1 + (scalar * (value2 - value1));
 }
+
 uint32_t lerpColor(
     uint32_t color1, uint32_t color2, float scalar) {
+    return strip.Color(
+        lerpChannel(getR(color1), getR(color2), scalar),
+        lerpChannel(getG(color1), getG(color2), scalar),
+        lerpChannel(getB(color1), getB(color2), scalar)
+    );
+}
+
+uint32_t lerpColorMirror(uint32_t color1, uint32_t color2, float scalar, bool reverse = false) {
+    if (scalar < 0.5) {
+        scalar = scalar * 2;
+    } else {
+        scalar = 1 - ((scalar - 0.5) * 2);
+    }
     return strip.Color(
         lerpChannel(getR(color1), getR(color2), scalar),
         lerpChannel(getG(color1), getG(color2), scalar),
@@ -81,19 +97,6 @@ class LEDSet {
         x2 = pos2; // Second index
         color1 = strip.Color(64, 0, 0);
         color2 = strip.Color(0, 64, 0);
-    }
-
-    uint32_t lerpColorMirror(uint32_t color1, uint32_t color2, float scalar, bool reverse = false) {
-        if (scalar < 0.5) {
-            scalar = scalar * 2;
-        } else {
-            scalar = 1 - ((scalar - 0.5) * 2);
-        }
-        return strip.Color(
-            lerpChannel(getR(color1), getR(color2), scalar),
-            lerpChannel(getG(color1), getG(color2), scalar),
-            lerpChannel(getB(color1), getB(color2), scalar)
-        );
     }
 
     void setBrightModAmp(float newAmp) {
@@ -168,11 +171,11 @@ class ArmCannon {
     LEDSet ledSet4; // Barrel Ring 2
     LEDSet ledSet5; // Muzzle
 
-    bool charging;  // Fire button was recently held down
-    bool firing;    // Fire button was recently released
-    byte chargingIncrementor; // How far through charge loop
-    byte firingIncrementor;   // same for firing anim TODO: Could probably put reuse
-    static const byte chargeDuration = 128; // Max 255
+    bool charging = false;  // Fire button was recently held down
+    bool charged = false;   // Fire has been held down enough
+    bool firing = false;    // Fire button was recently released
+    public: byte firingIncrementor = 0; // How far through charge loop
+    static const byte chargingDuration = 128; // Max 255
     static const byte firingDuration = 64; // Max 255
 
 
@@ -185,9 +188,9 @@ class ArmCannon {
     byte stateIncrementor = 0; // Used for state changes
 
     // Default colors are set to the starter beam
-    uint32_t Color1 = strip.Color(10, 10, 10);
-    uint32_t Color2 = strip.Color(10, 10, 10);
-    uint32_t Color3 = strip.Color(10, 10, 10);
+    uint32_t Color1 = strip.Color(56, 40, 0);
+    uint32_t Color2 = strip.Color(72, 8, 0);
+    uint32_t Color3 = strip.Color(16, 8, 2);
     uint32_t lastColor1;
     uint32_t lastColor2;
     uint32_t lastColor3;
@@ -214,6 +217,9 @@ class ArmCannon {
     }
     byte getState(){
         return state;
+    }
+    bool getFiring(){
+        return (charging || firing);
     }
 
     //
@@ -252,11 +258,13 @@ class ArmCannon {
     void pressFire(bool fireButtonState) {
         //False is button down, true is button up
         if (fireButtonState == true) {
+            //ledSet1.setBrightModAmp(0.0);
             charging = true;
             firing = false;
         } else {
             charging = false;
             firing = true;
+
         }
     }
 
@@ -284,35 +292,28 @@ class ArmCannon {
             ledSet4.setColor(Color1, Color2);
             ledSet5.setColor(Color3, Color3);
         }
-        
         if (charging == true) {
-
-
-            // How do I normalize this?
-            // ledSet1.setBrightModAmp(1.0); // This has to be necessary here and scaled to incrementor?
-            // ledSet1.setBrightModAmp(0.0);
-
-
-            if (chargingIncrementor > 128) {
-                // charged = true;
-            } // Just thinking...
-            fireTempColor1 = lerpColorMirror(
-                Color1, strip.Color(255,255,255),
-                (float)chargingIncrementor/chargingDuration);
+            /*fireTempColor1 = lerpColorMirror(
+                Color1, cWhite,
+                (float)firingIncrementor/chargingDuration);
             fireTempColor2 = lerpColorMirror(
-                Color1, strip.Color(255,255,255),
-                (float)chargingIncrementor/chargingDuration);
+                Color1, cWhite,
+                (float)firingIncrementor/chargingDuration);
             fireTempColor3 = lerpColorMirror(
-                Color1, strip.Color(255,255,255),
-                (float)chargingIncrementor/chargingDuration);
-            ledSet1.setColor(fireTempColor1, fireTempColor2);
-            ledSet2.setColor(fireTempColor1, fireTempColor2);
-            ledSet3.setColor(fireTempColor1, fireTempColor2);
-            ledSet4.setColor(fireTempColor1, fireTempColor2);
-            ledSet5.setColor(Color3, Color3);
-            chargingIncrementor++;
+                Color1, cWhite,
+                (float)firingIncrementor/chargingDuration); */
+            ledSet1.setColor(Color1, cWhite);
+            ledSet2.setColor(Color1, cWhite);
+            ledSet3.setColor(Color2, cWhite);
+            ledSet4.setColor(Color2, cWhite);
+            ledSet5.setColor(Color3, cWhite);
+            firingIncrementor++;
+            if (firingIncrementor > chargingDuration) {
+                charged = true;
+                firingIncrementor = 0;
+            }
         } else if (firing == true) {
-            if (chargingIncrementor > 64) {} // It's fully charged! Do something diff
+            // if (charged) {} // It's fully charged! Do something diff
             firingIncrementor++;
         }
 
@@ -333,14 +334,16 @@ void loop() {
     strip.show();
     timer++;
     // This whole section is just debug.
-    /*
-    if (timer % 64 == 0) {
+
+/*
+    if (timer % 32 == 0) {
         Serial.print("timer:");
         Serial.print(timer);
-        Serial.print(" - state:");
-        Serial.println(ac.getState());
+        Serial.print(" - firingIncrementor:");
+        Serial.println(ac.firingIncrementor);
     }
-    */
+*/
+
 }
 
 void changeMode() {
@@ -353,5 +356,15 @@ void changeMode() {
     }
 }
 
-void fire()  { ac.pressFire(true); } // Fire button pressed
-void fire2() { ac.pressFire(false); }  // Fire button depressed
+void fire()  {
+    if ((millis() - lastDebounceTime2) > debounceDelay) {
+        ac.pressFire(true);
+        lastDebounceTime2 = millis();
+    }
+} // Fire button pressed
+
+void fire2() {
+    if (ac.getFiring()) {
+            ac.pressFire(false);
+    }
+}  // Fire button depressed
